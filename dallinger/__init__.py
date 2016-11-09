@@ -8,7 +8,8 @@ from . import (
     processes,
     transformations,
     experiments,
-    heroku
+    heroku,
+    registration
 )
 
 from localconfig import config
@@ -24,4 +25,5 @@ __all__ = (
     "transformations",
     "experiments",
     "heroku",
+    "registration",
 )

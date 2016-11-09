@@ -29,6 +29,7 @@ from dallinger.heroku import (
     app_name,
     scale_up_dynos
 )
+from dallinger import registration
 from dallinger.version import __version__
 
 CONTEXT_SETTINGS = dict(help_option_names=['-h', '--help'])
@@ -330,6 +331,16 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
         out = open(os.devnull, 'w')
 
     (id, tmp) = setup_experiment(debug=False, verbose=verbose, app=app)
+
+    # Register the experiment on OSF
+    config = PsiturkConfig()
+    config.load_config()
+    try:
+        config.get('OSF', 'osf_access_token')
+        log("Preregistering experiment on OSF...")
+        registration.register(id, snapshot=None)
+    except Exception:
+        pass
 
     # Log in to Heroku if we aren't already.
     log("Making sure that you are logged in to Heroku.")
