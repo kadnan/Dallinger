@@ -17,7 +17,7 @@ import uuid
 
 import boto
 import click
-from psiturk.psiturk_config import PsiturkConfig
+from dallinger.config import get_config
 import psycopg2
 import redis
 import requests
@@ -102,7 +102,7 @@ def setup_experiment(debug=True, verbose=False, app=None):
             raise RuntimeError("The Postgres server isn't running.")
 
     # Load psiTurk configuration.
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
     # Check that the demo-specific requirements are satisfied.
@@ -183,7 +183,8 @@ def setup_experiment(debug=True, verbose=False, app=None):
             filename)
         shutil.copy(src, os.path.join(dst, filename))
 
-    clock_on = config.getboolean('Server Parameters', 'clock_on')
+    config = get_config()
+    clock_on = config.get('clock_on')
 
     # If the clock process has been disabled, overwrite the Procfile.
     if not clock_on:
@@ -246,17 +247,14 @@ def debug(verbose):
     cwd = os.getcwd()
     os.chdir(tmp)
 
-    # Load psiTurk configuration.
-    config = PsiturkConfig()
-    config.load_config()
-
     # Set the mode to debug.
-    config.set("Experiment Configuration", "mode", "debug")
-    config.set("Shell Parameters", "launch_in_sandbox_mode", "true")
-    config.set(
-        "Server Parameters",
-        "logfile",
-        os.path.join(cwd, config.get("Server Parameters", "logfile")))
+    config = get_config()
+    logfile = os.path.join(cwd, config.get("logfile"))
+    config.extend({
+        "mode": u"debug",
+        "launch_in_sandbox_mode": True,
+        "logfile": logfile
+    })
 
     # Swap in the HotAirRecruiter
     os.rename("dallinger_experiment.py", "dallinger_experiment_tmp.py")
@@ -271,21 +269,6 @@ def debug(verbose):
                     f2.write(line)
 
     os.remove("dallinger_experiment_tmp.py")
-
-    # Set environment variables.
-    vars = [
-        ("AWS Access", "aws_access_key_id"),
-        ("AWS Access", "aws_secret_access_key"),
-        ("AWS Access", "aws_region"),
-        ("psiTurk Access", "psiturk_access_key_id"),
-        ("psiTurk Access", "psiturk_secret_access_id"),
-    ]
-    for var in vars:
-        if var[0] not in os.environ:
-            os.environ[var[1]] = config.get(var[0], var[1])
-
-    if "HOST" not in os.environ:
-        os.environ["HOST"] = config.get('Server Parameters', 'host')
 
     # Start up the local server
     log("Starting up the server...")
@@ -330,7 +313,7 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
         time.sleep(0.5)
 
     # Load psiTurk configuration.
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
     # Initialize the app on Heroku.
@@ -343,7 +326,7 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
 
     # Transfer application to the correct team if necessary.
     try:
-        team = config.get("Heroku Access", "team")
+        team = config.get("team")
         log("Trasferring to {} team...".format(team))
         subprocess.check_call([
             "heroku",
@@ -356,10 +339,10 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
     except:
         pass
 
-    database_size = config.get('Database Parameters', 'database_size')
+    database_size = config.get('database_size')
 
     try:
-        if config.getboolean('Easter eggs', 'whimsical'):
+        if config.get('whimsical'):
             whimsical = "true"
         else:
             whimsical = "false"
@@ -380,34 +363,34 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
         app_name(id) + ".herokuapp.com",
 
         "heroku config:set aws_access_key_id=" +
-        config.get('AWS Access', 'aws_access_key_id'),
+        config.get('aws_access_key_id'),
 
         "heroku config:set aws_secret_access_key=" +
-        config.get('AWS Access', 'aws_secret_access_key'),
+        config.get('aws_secret_access_key'),
 
         "heroku config:set aws_region=" +
-        config.get('AWS Access', 'aws_region'),
+        config.get('aws_region'),
 
         "heroku config:set psiturk_access_key_id=" +
-        config.get('psiTurk Access', 'psiturk_access_key_id'),
+        config.get('psiturk_access_key_id'),
 
         "heroku config:set psiturk_secret_access_id=" +
-        config.get('psiTurk Access', 'psiturk_secret_access_id'),
+        config.get('psiturk_secret_access_id'),
 
         "heroku config:set auto_recruit=" +
-        config.get('Experiment Configuration', 'auto_recruit'),
+        config.get('auto_recruit'),
 
         "heroku config:set dallinger_email_username=" +
-        config.get('Email Access', 'dallinger_email_address'),
+        config.get('dallinger_email_address'),
 
         "heroku config:set dallinger_email_key=" +
-        config.get('Email Access', 'dallinger_email_password'),
+        config.get('dallinger_email_password'),
 
         "heroku config:set heroku_email_address=" +
-        config.get('Heroku Access', 'heroku_email_address'),
+        config.get('heroku_email_address'),
 
         "heroku config:set heroku_password=" +
-        config.get('Heroku Access', 'heroku_password'),
+        config.get('heroku_password'),
 
         "heroku config:set whimsical=" + whimsical,
     ]
@@ -486,7 +469,7 @@ def deploy_sandbox_shared_setup(verbose=True, app=None, web_procs=1):
 def sandbox(verbose, app):
     """Deploy app using Heroku to the MTurk Sandbox."""
     # Load psiTurk configuration.
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
     # Set the mode.
@@ -506,7 +489,7 @@ def sandbox(verbose, app):
 def deploy(verbose, app):
     """Deploy app using Heroku to MTurk."""
     # Load psiTurk configuration.
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
     # Set the mode.
@@ -528,10 +511,10 @@ def qualify(qualification, value, worker):
     """Assign a qualification to a worker."""
     # create connection to AWS
     from boto.mturk.connection import MTurkConnection
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
-    aws_access_key_id = config.get('AWS Access', 'aws_access_key_id')
-    aws_secret_access_key = config.get('AWS Access', 'aws_secret_access_key')
+    aws_access_key_id = config.get('aws_access_key_id')
+    aws_secret_access_key = config.get('aws_secret_access_key')
     conn = MTurkConnection(aws_access_key_id, aws_secret_access_key)
 
     def get_workers_with_qualification(qualification):
@@ -617,12 +600,12 @@ def backup(app):
     """Dump the database."""
     dump_path = dump_database(app)
 
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
     conn = boto.connect_s3(
-        config.get('AWS Access', 'aws_access_key_id'),
-        config.get('AWS Access', 'aws_secret_access_key'),
+        config.get('aws_access_key_id'),
+        config.get('aws_secret_access_key'),
     )
 
     bucket = conn.create_bucket(
@@ -689,10 +672,10 @@ def destroy(app):
 def awaken(app, databaseurl):
     """Restore the database from a given url."""
     id = app
-    config = PsiturkConfig()
+    config = get_config()
     config.load_config()
 
-    database_size = config.get('Database Parameters', 'database_size')
+    database_size = config.get('database_size')
 
     subprocess.check_call(
         "heroku addons:create heroku-postgresql:{} --app {}".format(
@@ -705,8 +688,8 @@ def awaken(app, databaseurl):
         shell=True)
 
     conn = boto.connect_s3(
-        config.get('AWS Access', 'aws_access_key_id'),
-        config.get('AWS Access', 'aws_secret_access_key'),
+        config.get('aws_access_key_id'),
+        config.get('aws_secret_access_key'),
     )
 
     bucket = conn.get_bucket(id)
