@@ -111,6 +111,15 @@ class Configuration(object):
 
 configurations = threading.local()
 
+def teardown_config():
+    """ Destroy the active configuration object, to ensure test isolation.
+    """
+    try:
+        del configurations.config
+    except AttributeError:
+        # Already torn down
+        pass
+
 def get_config():
     if hasattr(configurations, 'config'):
         return configurations.config

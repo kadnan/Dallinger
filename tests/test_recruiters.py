@@ -1,4 +1,5 @@
 from dallinger import db
+from dallinger.config import get_config, teardown_config
 import os
 
 
@@ -7,12 +8,16 @@ class TestRecruiters(object):
     def setup(self):
         self.db = db.init_db(drop_all=True)
         os.chdir(os.path.join("demos", "bartlett1932"))
+        teardown_config()
+        config = get_config()
+        config.load_config()
 
     def teardown(self):
         self.db.rollback()
         self.db.close()
         os.chdir("..")
         os.chdir("..")
+        teardown_config()
 
     def add(self, *args):
         self.db.add_all(args)

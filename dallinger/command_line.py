@@ -274,11 +274,12 @@ def debug(verbose):
     log("Starting up the server...")
 
     # Try running the flask app.
-    path = os.path.realpath(os.path.join(__file__, '..', 'heroku', 'psiturkapp.py'))
+    from dallinger.heroku.psiturkapp import launch
     try:
-        p = pexpect.spawn("python", [path])
         log("Here's the gunicorn app...")
-        p.interact()
+        # Unset the ready flag so configs can be re-parsed in this thread
+        config.ready = False
+        launch()
     except Exception:
         click.echo("\nCouldn't open gunicorn app. Internet connection okay?")
 

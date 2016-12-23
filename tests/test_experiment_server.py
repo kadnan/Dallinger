@@ -10,8 +10,11 @@ class FlaskAppTest(unittest.TestCase):
         # `tests/experiment` mimics the files that are put
         # in place by dallinger.command_line.setup_experiment
         # when running via the CLI
-        os.chdir('tests/experiment')
+        tests_dir = os.path.dirname(__file__)
+        os.chdir(os.path.join(tests_dir, 'experiment'))
 
+        import sys
+        del sys.modules['dallinger.experiment_server.experiment_server']
         from dallinger.experiment_server.experiment_server import app
         app.config['DEBUG'] = True
         app.config['TESTING'] = True
