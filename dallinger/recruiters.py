@@ -2,10 +2,13 @@
 import datetime
 import os
 from boto.mturk.connection import MTurkConnection
-from boto.mturk.connection import MTurkConnection
 from boto.mturk.connection import MTurkRequestError
 from boto.mturk.price import Price
 from dallinger.config import get_config
+from boto.mturk.qualification import LocaleRequirement
+from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
+from boto.mturk.qualification import Qualifications
+from boto.mturk.question import ExternalQuestion
 from psiturk.psiturk_config import PsiturkConfig
 
 
@@ -247,6 +250,8 @@ class ConfigurationWrapper(object):
         self._data['organization_name'] = str(
             self.config.get('HIT Configuration', 'organization_name'))
         self._data['experiment_name'] = str(self.config.get('HIT Configuration', 'title'))
+        self._data['notification_url'] = str(
+            self.config.get('Server Parameters', 'notification_url'))
         self._data['contact_email_on_error'] = str(
             self.config.get('HIT Configuration', 'contact_email_on_error'))
         self._data['ad_group'] = str(self.config.get('HIT Configuration', 'ad_group'))
@@ -272,6 +277,7 @@ class MTurkRecruiter(object):
     production_mturk_server = 'mechanicalturk.amazonaws.com'
     sandbox_mturk_server = 'mechanicalturk.sandbox.amazonaws.com'
     ad_url = 'do we need this? what is this?'
+    _mturk_connection = None
 
     @classmethod
     def from_current_config(cls):
@@ -286,6 +292,20 @@ class MTurkRecruiter(object):
         self.is_sandbox = self.config.get('is_sandbox')
         self.reward = Price(self.config.get('base_payment'))
         self.duration = datetime.timedelta(hours=self.config.get('duration'))
+
+    @property
+    def mturk(self):
+        """Cached MTurkConnection"""
+        if not self.aws_access_key_id or not self.aws_secret_access_key:
+            raise MTurkRecruiterException('AWS access key and secret not set.')
+        login_params = {
+            'aws_access_key_id': self.aws_access_key_id,
+            'aws_secret_access_key': self.aws_secret_access_key,
+            'host': self.host
+        }
+        if self._mturk_connection is None:
+            self._mturk_connection = MTurkConnection(**login_params)
+        return self._mturk_connection
 
     def open_recruitment(self, n=1):
         """Open a connection to AWS MTurk and create a HIT."""
@@ -304,11 +324,12 @@ class MTurkRecruiter(object):
             return
 
         hit_config = {
-            "ad_location": self.ad_url,
+            "ad_url": self.ad_url,
             "approve_requirement": self.config.get('approve_requirement'),
             "us_only": self.config.get('us_only'),
             "lifetime": self.config.get('lifetime'),
             "max_assignments": max_assignments,
+            "notification_url": self.config.get('notification_url'),
             "title": self.config.get('experiment_title'),
             "description": self.config.get('description'),
             "keywords": self.config.get('amt_keywords'),
@@ -341,21 +362,87 @@ class MTurkRecruiter(object):
         from dallinger.models import Participant
         return bool(Participant.query.all())
 
-    def create_hit(self, hit_confg):
-        # Replicate psiturk.amt_services.MTurkServices.create_hit()
-        return 'some HIT ID'
+    def build_hit_qualifications(self, hit_config):
+        quals = Qualifications()
+        quals.add(
+            PercentAssignmentsApprovedRequirement(
+                "GreaterThanOrEqualTo", hit_config['approve_requirement'])
+        )
+
+        if hit_config.get('us_only', False):
+            quals.add(LocaleRequirement("EqualTo", "US"))
+
+        return quals
+
+    def register_hit_type(self, hit_config):
+        """Register HIT Type for this HIT.
+        TODO: document what this actually means.
+        """
+        hit_type = self.mturk.register_hit_type(
+            hit_config['title'],
+            hit_config['description'],
+            hit_config['reward'],
+            hit_config['duration'],
+            keywords=hit_config['keywords'],
+            approval_delay=None,
+            qual_req=None)[0]
+
+        return hit_type
+
+    def register_notification_url(self, url, hit_type_id):
+        """Set a REST endpoint to recieve notifications about the HIT"""
+        event_types = (
+            "AssignmentAccepted",
+            "AssignmentAbandoned",
+            "AssignmentReturned",
+            "AssignmentSubmitted",
+            "HITReviewable",
+            "HITExpired",
+        )
+
+        self.mturk.set_rest_notification(hit_type_id, url, event_types=event_types)
+
+    def create_hit(self, hit_config):
+        # Replicates psiturk.amt_services.MTurkServices.create_hit()
+        experiment_url = hit_config['ad_url']
+        frame_height = 600
+        mturk_question = ExternalQuestion(experiment_url, frame_height)
+        qualifications = self.build_hit_qualifications(hit_config)
+        hit_type = self.register_hit_type(hit_config)
+        self.register_notification_url(hit_config['notification_url'], hit_type.HITTypeId)
+
+        params = dict(
+            hit_type=hit_type.HITTypeId,
+            question=mturk_question,
+            lifetime=hit_config['lifetime'],
+            max_assignments=hit_config['max_assignments'],
+            title=hit_config['title'],
+            description=hit_config['description'],
+            keywords=hit_config['keywords'],
+            reward=hit_config['reward'],
+            duration=hit_config['duration'],
+            approval_delay=None,
+            questions=None,
+            qualifications=qualifications,
+            response_groups=[
+                'Minimal',
+                'HITDetail',
+                'HITQuestion',
+                'HITAssignmentSummary'
+            ])
+
+        try:
+            self.configure_hit(hit_config)
+            myhit = self.mturk.create_hit(params)[0]
+            self.hitid = myhit.HITId
+        except:
+            return False
+        else:
+            return self.hitid
 
     def check_aws_credentials(self):
         """Verifies key/secret/host combination by making a balance inquiry"""
-        if not self.aws_access_key_id or not self.aws_secret_access_key:
-            raise MTurkRecruiterException('AWS access key and secret not set.')
-
-        mturkparams = {
-            'aws_access_key_id': self.aws_access_key_id,
-            'aws_secret_access_key': self.aws_secret_access_key,
-            'host': self.host
-        }
-        mtc = MTurkConnection(**mturkparams)
+        mtc = self.mturk
         try:
             mtc.get_account_balance()
         except MTurkRequestError as exception:
