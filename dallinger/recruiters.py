@@ -1,7 +1,6 @@
 """Recruiters manage the flow of participants to the experiment."""
 import datetime
 import os
-import sys
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.connection import MTurkRequestError
@@ -291,7 +290,7 @@ class MTurkRecruiter(object):
     def open_recruitment(self, n=1):
         """Open a connection to AWS MTurk and create a HIT."""
         max_assignments = n
-        if self.have_participants():
+        if self.is_in_progress:
             # Already started... do nothing.
             return
 
@@ -337,17 +336,14 @@ class MTurkRecruiter(object):
             return self.sandbox_mturk_server
         return self.production_mturk_server
 
-    def have_participants(self):
+    @property
+    def is_in_progress(self):
         from dallinger.models import Participant
         return bool(Participant.query.all())
 
     def create_hit(self, hit_confg):
         # Replicate psiturk.amt_services.MTurkServices.create_hit()
         return 'some HIT ID'
-
-    def update_ad_with_hit_id(self, ad_id, hit_id):
-        # Replicate PsiturkOrgServices.set_ad_hitid()
-        return True
 
     def check_aws_credentials(self):
         """Verifies key/secret/host combination by making a balance inquiry"""
