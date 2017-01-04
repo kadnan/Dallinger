@@ -1,7 +1,13 @@
 """Recruiters manage the flow of participants to the experiment."""
-
+import datetime
+import os
+import sys
 from boto.mturk.connection import MTurkConnection
+from boto.mturk.connection import MTurkConnection
+from boto.mturk.connection import MTurkRequestError
+from boto.mturk.price import Price
 from dallinger.config import get_config
+from psiturk.psiturk_config import PsiturkConfig
 
 
 class Recruiter(object):
@@ -209,12 +215,6 @@ class PsiTurkRecruiter(Recruiter):
     def close_recruitment(self):
         """Close recruitment."""
         pass
-
-
-# XXX Move imports
-import sys
-import datetime
-from boto.mturk.price import Price
 
 
 class ConfigurationWrapper(object):
