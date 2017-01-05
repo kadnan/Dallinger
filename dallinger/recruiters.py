@@ -244,7 +244,6 @@ class MTurkRecruiter(object):
         self.config = config
         self.aws_access_key_id = self.config.get('aws_access_key_id')
         self.aws_secret_access_key = self.config.get('aws_secret_access_key')
-        self.aws_region = self.config.get('aws_region')
         self.is_sandbox = self.config.get('launch_in_sandbox_mode')
         self.reward = Price(self.config.get('base_payment'))
         self.duration = datetime.timedelta(hours=self.config.get('duration'))
@@ -282,7 +281,7 @@ class MTurkRecruiter(object):
             "lifetime": self.config.get('lifetime'),
             "max_assignments": max_assignments,
             "notification_url": self.config.get('notification_url'),
-            "title": self.config.get('experiment_title'),
+            "title": self.config.get('title'),
             "description": self.config.get('description'),
             "keywords": self.config.get('amt_keywords'),
             "reward": self.reward,
