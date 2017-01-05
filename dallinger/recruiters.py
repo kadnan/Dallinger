@@ -1,6 +1,5 @@
 """Recruiters manage the flow of participants to the experiment."""
 import datetime
-import os
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.connection import MTurkRequestError
 from boto.mturk.price import Price
@@ -9,7 +8,7 @@ from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
 from boto.mturk.qualification import Qualifications
 from boto.mturk.question import ExternalQuestion
 from dallinger.config import get_config
-from psiturk.psiturk_config import PsiturkConfig
+from dallinger.models import Participant
 
 
 class Recruiter(object):
@@ -316,7 +315,6 @@ class MTurkRecruiter(object):
 
     @property
     def is_in_progress(self):
-        from dallinger.models import Participant
         return bool(Participant.query.all())
 
     def build_hit_qualifications(self, hit_config):
