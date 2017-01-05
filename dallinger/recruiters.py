@@ -273,10 +273,9 @@ class MTurkRecruiterException(Exception):
 class MTurkRecruiter(object):
     """Recruit participants from Amazon Mechanical Turk via boto"""
 
-    ad_file_max_bytes = 1048576
     production_mturk_server = 'mechanicalturk.amazonaws.com'
     sandbox_mturk_server = 'mechanicalturk.sandbox.amazonaws.com'
-    ad_url = 'do we need this? what is this?'
+    ad_url = 'https://some-experiment-domain.edu/ad'
     _mturk_connection = None
 
     @classmethod
