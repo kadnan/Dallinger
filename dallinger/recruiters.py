@@ -389,11 +389,4 @@ class MTurkRecruiter(object):
 
     def check_aws_credentials(self):
         """Verifies key/secret/host combination by making a balance inquiry"""
-        mtc = self.mturk
-        try:
-            mtc.get_account_balance()
-        except MTurkRequestError as exception:
-            print exception.error_message
-            return False
-        else:
-            return True
+        return bool(self.mturk.get_account_balance())
