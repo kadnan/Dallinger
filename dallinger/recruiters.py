@@ -4,11 +4,11 @@ import os
 from boto.mturk.connection import MTurkConnection
 from boto.mturk.connection import MTurkRequestError
 from boto.mturk.price import Price
-from dallinger.config import get_config
 from boto.mturk.qualification import LocaleRequirement
 from boto.mturk.qualification import PercentAssignmentsApprovedRequirement
 from boto.mturk.qualification import Qualifications
 from boto.mturk.question import ExternalQuestion
+from dallinger.config import get_config
 from psiturk.psiturk_config import PsiturkConfig
 
 
@@ -89,6 +89,9 @@ class PsiTurkRecruiter(Recruiter):
                 return 'yes'
 
         config = get_config()
+        if not config.ready:
+            config.load_config()
+
         self.server = FakeExperimentServerController()
 
         # Get keys from environment variables or config file.
