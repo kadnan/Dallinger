@@ -222,53 +222,6 @@ class PsiTurkRecruiter(Recruiter):
         pass
 
 
-class ConfigurationWrapper(object):
-    """Temporary, until we get the real thing."""
-
-    def __init__(self):
-        # load the configuration options from various places in provided a
-        # uniform interface to them.
-        self._data = {}
-        self.config = PsiturkConfig()
-        self.config.load_config()
-
-        # Get keys from environment variables or config file.
-        self._data['aws_access_key_id'] = os.getenv(
-            "aws_access_key_id",
-            self.config.get("AWS Access", "aws_access_key_id"))
-        self._data['aws_secret_access_key'] = os.getenv(
-            "aws_secret_access_key",
-            self.config.get("AWS Access", "aws_secret_access_key"))
-        self._data['aws_region'] = os.getenv(
-            "aws_region",
-            self.config.get("AWS Access", "aws_region"))
-        self._data['is_sandbox'] = self.config.getboolean(
-            'Shell Parameters', 'launch_in_sandbox_mode')
-        self._data['base_payment'] = self.config.get('HIT Configuration', 'base_payment')
-        self._data['duration'] = self.config.getfloat('HIT Configuration', 'duration')
-
-        self._data['server'] = os.getenv('HOST', self.config.get("Server Parameters", "host"))
-        self._data['browser_exclude_rule'] = str(
-            self.config.get('HIT Configuration', 'browser_exclude_rule'))
-        self._data['organization_name'] = str(
-            self.config.get('HIT Configuration', 'organization_name'))
-        self._data['experiment_name'] = str(self.config.get('HIT Configuration', 'title'))
-        self._data['notification_url'] = str(
-            self.config.get('Server Parameters', 'notification_url'))
-        self._data['contact_email_on_error'] = str(
-            self.config.get('HIT Configuration', 'contact_email_on_error'))
-        self._data['ad_group'] = str(self.config.get('HIT Configuration', 'ad_group'))
-        self._data['approve_requirement'] = self.config.get(
-            'HIT Configuration', 'Approve_Requirement')
-        self._data['us_only'] = self.config.getboolean('HIT Configuration', 'US_only')
-        self._data['lifetime'] = self.config.getfloat('HIT Configuration', 'lifetime')
-        self._data['description'] = self.config.get('HIT Configuration', 'description')
-        self._data['keywords'] = self.config.get('HIT Configuration', 'amt_keywords')
-
-    def get(self, key):
-        return self._data[key]
-
-
 class MTurkRecruiterException(Exception):
     """Custom exception for MTurkRecruiter"""
 
@@ -283,7 +236,9 @@ class MTurkRecruiter(object):
 
     @classmethod
     def from_current_config(cls):
-        config = ConfigurationWrapper()
+        config = get_config()
+        if not config.ready:
+            config.load_config()
         return cls(config)
 
     def __init__(self, config):
