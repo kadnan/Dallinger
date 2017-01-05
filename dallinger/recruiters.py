@@ -271,13 +271,9 @@ class MTurkRecruiter(object):
             return
 
         if self.config.get('server') in ['localhost', '127.0.0.1']:
-            print "Can't run real HIT from localhost"
-            return
+            raise MTurkRecruiterException("Can't run a HIT from localhost")
 
-        # Check AWS credentials
-        if not self.check_aws_credentials():
-            print 'Invalid AWS credentials.'
-            return
+        self.check_aws_credentials()
 
         hit_config = {
             "ad_url": self.ad_url,
@@ -293,9 +289,6 @@ class MTurkRecruiter(object):
             "duration": self.duration
         }
         hit_id = self.create_hit(hit_config)
-        if hit_id is False:
-            print "Unable to create HIT on Amazon Mechanical Turk."
-            return
 
         report = {
             'hit_id': hit_id,
@@ -387,14 +380,12 @@ class MTurkRecruiter(object):
             ]
         }
 
-        try:
-            self.configure_hit(hit_config)
-            myhit = self.mturk.create_hit(params)[0]
-            self.hitid = myhit.HITId
-        except:
-            return False
-        else:
-            return self.hitid
+        self.configure_hit(hit_config)
+        hit_response = self.mturk.create_hit(params)[0]
+        if not hit_response.IsValid:
+            raise MTurkRecruiterException("HIT request was invalid for unknown reason.")
+
+        return hit_response.HITId
 
     def check_aws_credentials(self):
         """Verifies key/secret/host combination by making a balance inquiry"""
