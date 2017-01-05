@@ -368,25 +368,26 @@ class MTurkRecruiter(object):
         hit_type = self.register_hit_type(hit_config)
         self.register_notification_url(hit_config['notification_url'], hit_type.HITTypeId)
 
-        params = dict(
-            hit_type=hit_type.HITTypeId,
-            question=mturk_question,
-            lifetime=hit_config['lifetime'],
-            max_assignments=hit_config['max_assignments'],
-            title=hit_config['title'],
-            description=hit_config['description'],
-            keywords=hit_config['keywords'],
-            reward=hit_config['reward'],
-            duration=hit_config['duration'],
-            approval_delay=None,
-            questions=None,
-            qualifications=qualifications,
-            response_groups=[
+        params = {
+            'hit_type': hit_type.HITTypeId,
+            'question': mturk_question,
+            'lifetime': hit_config['lifetime'],
+            'max_assignments': hit_config['max_assignments'],
+            'title': hit_config['title'],
+            'description': hit_config['description'],
+            'keywords': hit_config['keywords'],
+            'reward': hit_config['reward'],
+            'duration': hit_config['duration'],
+            'approval_delay': None,
+            'questions': None,
+            'qualifications': qualifications,
+            'response_groups': [
                 'Minimal',
                 'HITDetail',
                 'HITQuestion',
                 'HITAssignmentSummary'
-            ])
+            ]
+        }
 
         try:
             self.configure_hit(hit_config)
